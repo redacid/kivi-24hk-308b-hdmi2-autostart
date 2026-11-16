@@ -1,40 +1,42 @@
-# HDMI Autostart для Kivi 24HK30B
+# HDMI Autostart for Kivi 24HK30B
 
-Крихітний Android-застосунок (~9 КБ, без іконки та інтерфейсу), який при ввімкненні телевізора **автоматично перемикає його на HDMI2**.
+🇬🇧 **English** · 🇺🇦 [Українська](README.uk.md)
 
-Штатна прошивка Kivi 24HK30B не запам'ятовує останнє джерело сигналу і завжди стартує з лаунчера Kivi, а в меню немає ні налаштування «джерело при ввімкненні», ні HDMI-CEC. Цей застосунок вирішує проблему: через ~4 с після завантаження системи відкриває TV-плеєр MStar на вході HDMI2.
+A tiny Android app (~9 KB, no icon, no UI) that **automatically switches the TV to HDMI2 on power-on**.
 
-## Пристрій
+The stock Kivi 24HK30B firmware does not remember the last input source and always boots into the Kivi launcher. Its settings menu has no "power-on source" option and no HDMI-CEC. This app fixes that: ~4 s after the system boots, it opens the MStar TV player on the HDMI2 input.
 
-Перевірено на одному конкретному телевізорі. На інших моделях/прошивках може не працювати без змін.
+## Device
 
-| Параметр | Значення |
+Tested on one specific TV. Other models or firmware versions may need changes.
+
+| Property | Value |
 |---|---|
-| Телевізор | **Kivi 24HK30B** (24", HD) |
+| TV | **Kivi 24HK30B** (24", HD) |
 | Android | 6.0.1 (API 23), Android TV |
-| Патч безпеки | 2016-04-01 |
-| Збірка (`ro.build.display.id`) | `ctl_iptv_mrvl-eng 6.0.1 M5C14J eng.inkyu28.kim.20160629.175740 release-keys` |
+| Security patch | 2016-04-01 |
+| Build (`ro.build.display.id`) | `ctl_iptv_mrvl-eng 6.0.1 M5C14J eng.inkyu28.kim.20160629.175740 release-keys` |
 | Fingerprint | `CTL/ctl_iptv_mrvl/ctl_iptv_mrvl:6.0.1/M5C14J/inkyu28.kim06291758:eng/release-keys` |
-| `ro.build.type` | `userdebug` (`ro.debuggable=1`, працює `adb root`) |
-| SoC | MStar, кодова назва **Mainz** (`ro.hardware=mainz`), arm64-v8a |
-| Ядро | Linux 3.10.86 |
-| RAM | ~1 ГБ (MemTotal 910 МБ) |
-| `/data` | 4.4 ГБ |
-| `services.jar` | від 2020-09-29 (модифікований Kivi, див. нижче) |
-| STR | `mstar.str.enable=user_mode` (на практиці ТВ при ввімкненні робить повне завантаження) |
+| `ro.build.type` | `userdebug` (`ro.debuggable=1`, `adb root` works) |
+| SoC | MStar, codename **Mainz** (`ro.hardware=mainz`), arm64-v8a |
+| Kernel | Linux 3.10.86 |
+| RAM | ~1 GB (MemTotal 910 MB) |
+| `/data` | 4.4 GB |
+| `services.jar` | dated 2020-09-29 (modified by Kivi, see below) |
+| STR | `mstar.str.enable=user_mode` (in practice the TV does a full boot on power-on) |
 
-> Властивості `ro.product.brand=CTL`, `ro.product.manufacturer=LGE`, `ro.board.platform=marvellberlin` успадковані від чужого шаблону збірки й не відповідають реальному залізу. Фактична платформа — MStar (пакети `com.mstar.*`, блочні пристрої `mstar_mci.0`).
+> The properties `ro.product.brand=CTL`, `ro.product.manufacturer=LGE` and `ro.board.platform=marvellberlin` are inherited from someone else's build template and do not match the real hardware. The actual platform is MStar (`com.mstar.*` packages, `mstar_mci.0` block devices).
 
-Ключові системні пакети:
+Key system packages:
 
-- `com.kivi.launcher_v2` — домашній екран Kivi (HOME).
-- `com.mstar.tv.tvplayer.ui` — TV-плеєр MStar, відповідає за ефірне ТБ та HDMI/AV входи.
-- `com.mstar.tv.service`, `com.mstar.android.tv.app` — TV-сервіси MStar.
-- Стандартних сервісів Android `tv_input` (TIF) і `hdmi_control` (CEC) **немає**.
+- `com.kivi.launcher_v2`: Kivi home screen (HOME).
+- `com.mstar.tv.tvplayer.ui`: MStar TV player, handles broadcast TV and HDMI/AV inputs.
+- `com.mstar.tv.service`, `com.mstar.android.tv.app`: MStar TV services.
+- The standard Android `tv_input` (TIF) and `hdmi_control` (CEC) services are **absent**.
 
-## Як це працює
+## How it works
 
-Перемикання входу виконує `RootActivity` TV-плеєра MStar, якому передається extra `inputSrc` з номером джерела:
+Input switching is done by the MStar TV player's `RootActivity`, which takes an `inputSrc` extra with the source number:
 
 ```bash
 adb shell am start \
@@ -43,51 +45,51 @@ adb shell am start \
   --ei inputSrc 24
 ```
 
-Застосунок робить те саме з `BroadcastReceiver` на `BOOT_COMPLETED`, із затримкою 4 с, щоб лаунчер Kivi встиг завантажитися.
+The app does the same from a `BroadcastReceiver` on `BOOT_COMPLETED`, with a 4 s delay so the Kivi launcher finishes starting first.
 
-### Номери джерел (`EN_INPUT_SOURCE_TYPE` MStar)
+### Source numbers (MStar `EN_INPUT_SOURCE_TYPE`)
 
-| Джерело | `inputSrc` | Статус |
+| Source | `inputSrc` | Status |
 |---|---|---|
-| HDMI1 | 23 | за enum MStar, не перевірено |
-| **HDMI2** | **24** | перевірено (логи `setInputSource(24) Success`) |
-| HDMI3 | 25 | за enum MStar, не перевірено |
-| Лаунчер / Android (STORAGE) | 34 | перевірено (`getCurrentInputSource` на головному екрані) |
+| HDMI1 | 23 | per MStar enum, not verified |
+| **HDMI2** | **24** | verified (`setInputSource(24) Success` in logs) |
+| HDMI3 | 25 | per MStar enum, not verified |
+| Launcher / Android (STORAGE) | 34 | verified (`getCurrentInputSource` on home screen) |
 
-Поточне джерело можна побачити так:
+To see the current source:
 
 ```bash
 adb logcat | grep -E "setInputSource|getCurrentInputSource"
 ```
 
-### Чому потрібна установка в `/system`
+### Why it must be installed in `/system`
 
-Kivi модифікували `ActivityStackSupervisor` у `services.jar`: метод `shouldStartActivityMayWait()` блокує запуск Activity з процесу, який зараз не на екрані, якщо застосунок не системний. У логах це виглядає так:
+Kivi modified `ActivityStackSupervisor` in `services.jar`: the method `shouldStartActivityMayWait()` blocks activity starts from a process that is not currently on screen, unless the caller is a system app. The log shows:
 
 ```
 E ActivityManager: Check start activity pre-condition fail, the process which calling activity belongs to is not visible
 ```
 
-Звичайний (user) застосунок з фону відкрити плеєр не може. Застосунок у `/system/app` проходить перевірку `checkIsSystemAppType()` і працює.
+A regular (user) app cannot open the player from the background. An app in `/system/app` passes the `checkIsSystemAppType()` check and works.
 
-## Збірка
+## Building
 
-Gradle не потрібен. Потрібні:
+No Gradle needed. Requirements:
 
 - JDK 17+ (`javac`, `keytool`);
-- Android build-tools (`aapt`, `d8`, `zipalign`, `apksigner`), перевірено з **34.0.0**;
-- `android.jar` платформи **23** (Android 6.0).
+- Android build-tools (`aapt`, `d8`, `zipalign`, `apksigner`), tested with **34.0.0**;
+- `android.jar` for platform **23** (Android 6.0).
 
-Структура каталогу `$SDK`, яку очікує скрипт:
+Directory layout expected by the script in `$SDK`:
 
 ```
 $SDK/
-├── jdk/          # розпакований JDK (bin/javac ...)
-├── android-14/   # розпакований build-tools_r34-linux.zip
-└── android-6.0/  # розпакований platform-23_r03.zip (android.jar)
+├── jdk/          # unpacked JDK (bin/javac ...)
+├── android-14/   # unpacked build-tools_r34-linux.zip
+└── android-6.0/  # unpacked platform-23_r03.zip (android.jar)
 ```
 
-Завантаження:
+Download:
 
 ```bash
 mkdir -p ~/android-mini-sdk && cd ~/android-mini-sdk
@@ -98,27 +100,27 @@ unzip -q build-tools_r34-linux.zip && unzip -q platform-23_r03.zip
 mkdir jdk && tar xzf jdk.tgz -C jdk --strip-components=1
 ```
 
-Збірка:
+Build:
 
 ```bash
 SDK=~/android-mini-sdk ./build.sh
 ```
 
-Результат — `hdmi-autostart.apk`. При першій збірці створюється `debug.keystore` (у git не потрапляє).
+Output: `hdmi-autostart.apk`. The first build creates `debug.keystore` (git-ignored).
 
-> Код навмисно без анонімних/вкладених класів: d8 з build-tools 34 падає з `NullPointerException` на внутрішніх класах, скомпільованих javac 21.
+> The code deliberately avoids anonymous/inner classes: d8 from build-tools 34 crashes with a `NullPointerException` on inner classes compiled by javac 21.
 
-## Встановлення на ТВ
+## Installing on the TV
 
-1. Увімкнути налагодження по мережі. На цій прошивці ADB по TCP уже доступний:
+1. Connect over ADB. On this firmware, ADB over TCP is already enabled:
 
    ```bash
-   adb connect <IP_ТВ>:5555
+   adb connect <TV_IP>:5555
    adb root
-   adb connect <IP_ТВ>:5555
+   adb connect <TV_IP>:5555
    ```
 
-2. Покласти APK у `/system/app`:
+2. Put the APK into `/system/app`:
 
    ```bash
    adb shell 'mount -o rw,remount /system && mkdir -p /system/app/HdmiAutostart'
@@ -127,21 +129,21 @@ SDK=~/android-mini-sdk ./build.sh
    adb reboot
    ```
 
-3. Перевірка після перезавантаження:
+3. Verify after reboot:
 
    ```bash
    adb logcat -d | grep -E "hdmiautostart|setInputSource"
    ```
 
-   Очікується `Start proc ...ua.redacid.hdmiautostart ... for broadcast` і `setInputSource(24) Success`.
+   Expect `Start proc ...ua.redacid.hdmiautostart ... for broadcast` and `setInputSource(24) Success`.
 
-Ручний тест без перезавантаження (з головного екрана):
+Manual test without rebooting (from the home screen):
 
 ```bash
 adb shell am broadcast -a ua.redacid.hdmiautostart.TEST -n ua.redacid.hdmiautostart/.BootReceiver
 ```
 
-## Видалення
+## Uninstalling
 
 ```bash
 adb root
@@ -149,21 +151,21 @@ adb shell 'mount -o rw,remount /system && rm -r /system/app/HdmiAutostart && mou
 adb reboot
 ```
 
-## Налаштування
+## Configuration
 
-У [`BootReceiver.java`](src/ua/redacid/hdmiautostart/BootReceiver.java):
+In [`BootReceiver.java`](src/ua/redacid/hdmiautostart/BootReceiver.java):
 
-- `INPUT_SRC_HDMI2` — номер входу (див. таблицю вище);
-- `DELAY_MS` — затримка після завантаження (за замовчуванням 4000 мс).
+- `INPUT_SRC_HDMI2`: input number (see table above);
+- `DELAY_MS`: delay after boot (default 4000 ms).
 
-Після зміни перезібрати та замінити APK у `/system/app/HdmiAutostart/`.
+After changing, rebuild and replace the APK in `/system/app/HdmiAutostart/`.
 
-## Обмеження
+## Limitations
 
-- Обробляється лише `BOOT_COMPLETED`. Якщо ТВ буде виходити зі сну (STR) без повного завантаження, перемикання не спрацює.
-- Перемикання відбувається завжди, навіть якщо до вимкнення було інше джерело.
-- Оновлення прошивки Kivi через USB/OTA, найімовірніше, зітре `/system/app/HdmiAutostart`.
+- Only `BOOT_COMPLETED` is handled. If the TV ever resumes from sleep (STR) without a full boot, the switch won't happen.
+- The switch always happens, even if a different source was active before power-off.
+- A Kivi firmware update via USB/OTA will most likely wipe `/system/app/HdmiAutostart`.
 
-## Відмова від відповідальності
+## Disclaimer
 
-Зміна системного розділу виконується на власний ризик. Автор не несе відповідальності за пошкодження пристрою.
+Modifying the system partition is at your own risk. The author is not responsible for any damage to the device.
